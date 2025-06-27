@@ -1,0 +1,20 @@
+{
+  "title": "Event Reminder",
+  "body": "Join our event tomorrow!",
+  "title_de": "Ereigniserinnerung",
+  "body_de": "Nimm morgen an unserem Event teil!",
+  "title_fr": "Rappel d'événement",
+  "body_fr": "Rejoignez notre événement demain !",
+  "title_es": "Recordatorio de evento",
+  "body_es": "¡Únete a nuestro evento mañana!",
+  "title_it": "Promemoria evento",
+  "body_it": "Partecipa al nostro evento domani!",
+  "title_ja": "イベントリマインダー",
+  "body_ja": "明日のイベントに参加してください！",
+  "title_pt": "Lembrete de evento",
+  "body_pt": "Junte-se ao nosso evento amanhã!",
+  "data": {
+    "eventId": "123",
+    "type": "reminder"
+  }
+}

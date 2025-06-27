@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QR Scanner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+    <style>
+      /* Ensure scanner container is square with responsive sizing */
+      .scanner-box {
+        position: relative;
+        width: 100%;
+        padding-bottom: 100%; /* 1:1 aspect ratio for square */
+        overflow: hidden;
+        border: 2px solid #d1d5db;
+        border-radius: 0.5rem;
+      }
+
+      #scanner {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 40vh;
+      }
+
+      /* Ensure the video feed fits the container */
+      #scanner video {
+        width: 100%;
+        height: 100%;
+        height: 60vh;
+        object-fit: cover; /* Ensure the video fills the container */
+      }
+
+      /* Scanner overlay for a "scanner-like" look */
+      .scanner-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none; /* Allow interaction with the scanner */
+        background: rgba(0, 0, 0, 0.3); /* Semi-transparent overlay */
+        display: none; /* Hidden by default */
+      }
+
+      .scanner-overlay.active {
+        display: block;
+      }
+
+      /* Moving scan line */
+      .scan-line {
+        width: 100%;
+        height: 2px;
+        background: #00ff00; /* Green scan line */
+        position: absolute;
+        top: 0;
+        animation: scan 2s infinite linear;
+      }
+
+      @keyframes scan {
+        0% {
+          top: 0;
+        }
+        50% {
+          top: 100%;
+        }
+        100% {
+          top: 0;
+        }
+      }
+
+      /* Base styles for mobile */
+      .scanner-container {
+        margin: 0 auto;
+        padding: 16px;
+        /* height: 80vh; */
+        max-width: 400px; /* Default for mobile */
+      }
+
+      .btn-mobile {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        margin-bottom: 12px;
+        border-radius: 0.5rem;
+      }
+
+      /* Desktop styles */
+      @media (min-width: 640px) {
+        .scanner-container {
+          max-width: 500px; /* Larger for desktop */
+          padding: 24px;
+        }
+
+        .btn-mobile {
+          padding: 14px;
+          font-size: 18px;
+        }
+      }
+
+      /* Status overlay styling */
+      .status-overlay {
+        position: absolute;
+        top: -40px;
+        left: 0;
+        right: 0;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 8px;
+        border-radius: 8px 8px 0 0;
+        z-index: 10;
+      }
+
+      .scanner-wrapper {
+        position: relative;
+        margin-bottom: 16px;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 p-4">
+    <div class="scanner-container bg-white rounded-lg shadow-lg">
+      <h2 class="text-xl font-semibold mb-4 text-gray-800 text-center">
+        QR Scanner
+      </h2>
+
+      <!-- Scanner Area with Overlay -->
+      <div class="scanner-wrapper">
+        <div id="scanner" class="scanner-box hidden"></div>
+        <div id="scannerOverlay" class="scanner-overlay">
+          <div class="scan-line"></div>
+        </div>
+        <div id="statusOverlay" class="status-overlay hidden">
+          <p
+            id="overlayStatus"
+            class="text-sm text-gray-700 text-center font-medium"
+          ></p>
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <div class="space-y-3">
+        <button
+          id="startScanBtn"
+          class="bg-blue-500 text-white btn-mobile hover:bg-blue-600 transition-colors font-medium"
+        >
+          📱 Start Scanning
+        </button>
+
+        <button
+          id="stopScanBtn"
+          class="bg-red-500 text-white btn-mobile hover:bg-red-600 transition-colors font-medium hidden"
+        >
+          ⏹️ Stop Scanning
+        </button>
+
+        <button
+          id="retryBtn"
+          class="bg-yellow-500 text-white btn-mobile hover:bg-yellow-600 transition-colors font-medium hidden"
+        >
+          🔄 Try Again
+        </button>
+      </div>
+
+      <!-- Status and Message -->
+      <div class="mt-4 space-y-2">
+        <p id="status" class="text-sm text-gray-600 text-center">
+          Tap "Start Scanning" to begin
+        </p>
+        <div id="messageContainer" class="min-h-[40px]">
+          <p id="message" class="text-sm text-gray-600 text-center px-2">
+            Ready to scan QR code
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const scanner = new Html5Qrcode("scanner");
+      const scannerDiv = document.getElementById("scanner");
+      const scannerOverlay = document.getElementById("scannerOverlay");
+      const statusOverlay = document.getElementById("statusOverlay");
+      const overlayStatus = document.getElementById("overlayStatus");
+      const startScanBtn = document.getElementById("startScanBtn");
+      const stopScanBtn = document.getElementById("stopScanBtn");
+      const retryBtn = document.getElementById("retryBtn");
+      const statusEl = document.getElementById("status");
+      const messageEl = document.getElementById("message");
+
+      let isScanning = false;
+      let isProcessing = false; // Semaphore-like flag for API calls
+      let scannerActive = false;
+
+      // Dynamically calculate qrbox size to match the container
+      function getQrBoxSize() {
+        const scannerBox = document.querySelector(".scanner-box");
+        const containerWidth = scannerBox.offsetWidth;
+        const containerHeight = scannerBox.offsetHeight;
+        const size = Math.min(containerWidth, containerHeight);
+        return { width: size, height: size };
+      }
+
+      // Function to get geolocation
+      async function getUserLocation() {
+        return new Promise((resolve) => {
+          if (!navigator.geolocation) {
+            console.log("Geolocation is not supported by this browser.");
+            resolve({ latitude: null, longitude: null });
+            return;
+          }
+
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              resolve({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+              });
+            },
+            (error) => {
+              console.log(
+                "Geolocation permission denied or error:",
+                error.message
+              );
+              resolve({ latitude: null, longitude: null });
+            },
+            { timeout: 10000, enableHighAccuracy: true }
+          );
+        });
+      }
+
+      function updateStatus(text, isError = false) {
+        statusEl.textContent = text;
+        statusEl.className = `text-sm text-center ${
+          isError ? "text-red-600" : "text-gray-600"
+        }`;
+
+        if (scannerActive) {
+          overlayStatus.textContent = text;
+          overlayStatus.className = `text-sm text-center font-medium ${
+            isError ? "text-red-700" : "text-gray-700"
+          }`;
+        }
+      }
+
+      function updateMessage(text, isError = false) {
+        messageEl.textContent = text;
+        messageEl.className = `text-sm text-center px-2 ${
+          isError ? "text-red-600" : "text-green-600"
+        }`;
+      }
+
+      function showButtons(show) {
+        const buttons = [startScanBtn, stopScanBtn, retryBtn];
+        buttons.forEach((btn) => btn.classList.add("hidden"));
+
+        if (Array.isArray(show)) {
+          show.forEach((btn) => btn.classList.remove("hidden"));
+        } else {
+          show.classList.remove("hidden");
+        }
+      }
+
+      function getDescriptiveError(error) {
+        const errorMsg = error?.message?.toLowerCase() || "";
+
+        if (
+          errorMsg.includes("failed to fetch") ||
+          errorMsg.includes("network")
+        ) {
+          return "❌ Network error. Check your connection and try again.";
+        } else if (errorMsg.includes("timeout")) {
+          return "⏱️ Request timed out. Please try again.";
+        } else if (errorMsg.includes("invalid") && errorMsg.includes("qr")) {
+          return "❌ Invalid QR code. Please scan a valid attendance code.";
+        } else if (
+          errorMsg.includes("camera") ||
+          errorMsg.includes("permission")
+        ) {
+          return "📷 Camera access needed. Please allow permissions.";
+        } else if (errorMsg.includes("waitlistid")) {
+          return "❌ Invalid QR code. No attendance data found.";
+        } else {
+          return "❌ Scan failed. Please try again.";
+        }
+      }
+
+      async function processQRCode(qrData) {
+        // Semaphore: If already processing, ignore further scans
+        if (isProcessing) {
+          return;
+        }
+
+        isProcessing = true; // Lock further scans
+
+        updateStatus("🔍 QR detected, processing...");
+        updateMessage("⏳ Please wait...");
+
+        try {
+          const url = new URL(qrData);
+          const waitlistId = url.searchParams.get("waitlistId");
+          if (!waitlistId) {
+            throw new Error("Invalid QR code: No waitlistId found");
+          }
+
+          updateStatus("📍 Requesting location...");
+          updateMessage("📍 Please allow location access...");
+
+          // Request geolocation
+          const { latitude, longitude } = await getUserLocation();
+
+          updateStatus("📡 Sending to server...");
+          updateMessage("⏳ Marking attendance...");
+
+          const response = await fetch(
+            "https://api.meetandmore.com/api/attendance/mark-by-qr",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ waitlistId, latitude, longitude }),
+            }
+          );
+
+          const result = await response.json();
+          console.log("Backend response:", result);
+
+          if (result.success) {
+            updateMessage(
+              "✅ " + (result.message || "Attendance marked successfully")
+            );
+            updateStatus("✅ Success! Scan complete.");
+            stopScannerCompletely(); // Stop scanner immediately after success
+            showButtons(startScanBtn);
+          } else {
+            updateMessage("❌ " + (result.message || "Request failed"), true);
+            updateStatus("❌ Failed. Try again.", true);
+            stopScannerCompletely();
+            showButtons(retryBtn);
+          }
+        } catch (error) {
+          console.log("Error:", error);
+          const descriptiveError = getDescriptiveError(error);
+          updateStatus("❌ Scan failed", true);
+          updateMessage(descriptiveError, true);
+          stopScannerCompletely();
+          showButtons(retryBtn);
+        } finally {
+          isProcessing = false; // Reset semaphore
+        }
+      }
+
+      function startScanning() {
+        // Reset state
+        isProcessing = false;
+        scannerActive = true;
+
+        scannerDiv.classList.remove("hidden");
+        scannerOverlay.classList.add("active"); // Show scanner overlay
+        statusOverlay.classList.remove("hidden");
+        showButtons(stopScanBtn);
+
+        updateStatus("📷 Starting camera...");
+        updateMessage("📱 Position QR code in the frame");
+
+        const qrBoxSize = getQrBoxSize();
+
+        scanner
+          .start(
+            { facingMode: "environment" },
+            {
+              fps: 10,
+              qrbox: qrBoxSize,
+              aspectRatio: 1.0,
+            },
+            processQRCode,
+            (errorMessage) => {
+              if (!isProcessing && scannerActive) {
+                updateStatus("📱 Hold steady, scanning...");
+              }
+            }
+          )
+          .then(() => {
+            isScanning = true;
+            updateStatus("📱 Camera ready! Scan your QR code");
+          })
+          .catch((err) => {
+            let errorMsg = "📷 Camera error: ";
+            if (err?.message?.includes("Permission")) {
+              errorMsg += "Please allow camera access";
+            } else if (err?.message?.includes("NotFound")) {
+              errorMsg += "No camera found";
+            } else {
+              errorMsg += "Check camera permissions";
+            }
+            updateStatus(errorMsg, true);
+            updateMessage("❌ Cannot access camera", true);
+            stopScannerCompletely();
+            showButtons(retryBtn);
+          });
+      }
+
+      function stopScannerCompletely() {
+        if (isScanning) {
+          scanner
+            .stop()
+            .then(() => {
+              isScanning = false;
+              scannerActive = false;
+              scannerDiv.classList.add("hidden");
+              scannerOverlay.classList.remove("active");
+              statusOverlay.classList.add("hidden");
+            })
+            .catch(() => {
+              isScanning = false;
+              scannerActive = false;
+              scannerDiv.classList.add("hidden");
+              scannerOverlay.classList.remove("active");
+              statusOverlay.classList.add("hidden");
+            });
+        } else {
+          scannerActive = false;
+          scannerDiv.classList.add("hidden");
+          scannerOverlay.classList.remove("active");
+          statusOverlay.classList.add("hidden");
+        }
+      }
+
+      function stopScanning() {
+        updateStatus("⏹️ Stopping scanner...");
+        stopScannerCompletely();
+        showButtons(startScanBtn);
+        updateStatus("⏹️ Scanner stopped");
+        updateMessage("Ready to scan QR code");
+        isProcessing = false;
+      }
+
+      function retryScanning() {
+        updateStatus("🔄 Preparing to retry...");
+        updateMessage("📱 Getting ready...");
+        isProcessing = false;
+        setTimeout(startScanning, 500);
+      }
+
+      startScanBtn.addEventListener("click", startScanning);
+      stopScanBtn.addEventListener("click", stopScanning);
+      retryBtn.addEventListener("click", retryScanning);
+    </script>
+  </body>
+</html>

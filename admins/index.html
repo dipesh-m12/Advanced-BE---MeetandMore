@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Venue Management Console</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              aws: {
+                blue: "#232f3e",
+                orange: "#ff9900",
+                light: "#f8f8f8",
+                hover: "#1a2634",
+                border: "#e3e3e3",
+                success: "#1d8102",
+                danger: "#d13212",
+                warning: "#ff9900",
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      .aws-loader {
+        width: 24px;
+        height: 24px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #ff9900;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .fade-in {
+        animation: fadeIn 0.3s ease-in;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .aws-toggle {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+      }
+
+      .aws-toggle input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .aws-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.4s;
+        border-radius: 24px;
+      }
+
+      .aws-slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+      }
+
+      input:checked + .aws-slider {
+        background-color: #1d8102;
+      }
+
+      input:checked + .aws-slider:before {
+        transform: translateX(26px);
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-aws-blue text-white p-4 shadow-md">
+      <div class="container mx-auto flex justify-between items-center">
+        <div class="flex items-center space-x-4">
+          <div class="text-aws-orange text-2xl font-bold">
+            <i class="fas fa-map-marker-alt mr-2"></i>
+            Venue Management Console
+          </div>
+        </div>
+        <div class="flex items-center space-x-4">
+          <div class="relative flex items-center space-x-2">
+            <input
+              type="text"
+              id="admin-code"
+              placeholder="Admin Code"
+              class="px-3 py-1 rounded text-black text-sm"
+              value=""
+            />
+            <button
+              id="verify-admin-code"
+              class="bg-aws-orange hover:bg-yellow-600 text-white px-3 py-1 rounded-md text-sm"
+            >
+              Verify
+            </button>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mx-auto p-4">
+      <!-- Breadcrumb -->
+      <div class="flex items-center text-sm mb-6 text-gray-600">
+        <span>Home</span>
+        <i class="fas fa-chevron-right mx-2 text-xs"></i>
+        <span>Venue Management</span>
+      </div>
+
+      <!-- Tabs -->
+      <div class="mb-6 border-b border-aws-border">
+        <div class="flex">
+          <button
+            id="tab-cities"
+            class="px-4 py-2 font-medium text-aws-blue border-b-2 border-aws-orange"
+          >
+            Cities
+          </button>
+          <button
+            id="tab-venues"
+            class="px-4 py-2 font-medium text-gray-500 hover:text-aws-blue"
+          >
+            Venues
+          </button>
+        </div>
+      </div>
+
+      <!-- Alert Container -->
+      <div id="alert-container" class="mb-4 hidden">
+        <!-- Alerts will be inserted here -->
+      </div>
+
+      <!-- Cities Tab Content -->
+      <div id="cities-content" class="fade-in">
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold">Cities</h2>
+            <button
+              id="add-city-btn"
+              class="bg-aws-orange hover:bg-yellow-600 text-white px-4 py-2 rounded-md text-sm flex items-center"
+            >
+              <i class="fas fa-plus mr-2"></i> Add City
+            </button>
+          </div>
+
+          <!-- Cities Table -->
+          <div class="overflow-x-auto">
+            <table class="min-w-full bg-white">
+              <thead class="bg-gray-100 text-gray-600 text-sm">
+                <tr>
+                  <th class="py-3 px-4 text-left">City Name</th>
+                  <th class="py-3 px-4 text-left">Region Currency</th>
+                  <th class="py-3 px-4 text-left">Amount</th>
+                  <th class="py-3 px-4 text-left">Timezone</th>
+                  <th class="py-3 px-4 text-left">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="cities-table-body" class="text-gray-700">
+                <!-- Cities will be loaded here -->
+                <tr>
+                  <td colspan="5" class="py-4 px-4 text-center">
+                    <div class="aws-loader mx-auto"></div>
+                    <p class="mt-2 text-sm text-gray-500">Loading cities...</p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Venues Tab Content -->
+      <div id="venues-content" class="hidden fade-in">
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold">Venues</h2>
+            <div class="flex items-center space-x-2">
+              <select
+                id="city-filter"
+                class="border border-gray-300 rounded-md px-3 py-2 text-sm"
+              >
+                <option value="">Select City</option>
+                <!-- Cities will be loaded here -->
+              </select>
+              <button
+                id="refresh-venues-btn"
+                class="bg-aws-blue hover:bg-aws-hover text-white px-3 py-2 rounded-md text-sm flex items-center"
+                title="Refresh Venues"
+              >
+                <i class="fas fa-sync-alt"></i>
+              </button>
+              <button
+                id="add-venue-btn"
+                class="bg-aws-orange hover:bg-yellow-600 text-white px-4 py-2 rounded-md text-sm flex items-center"
+              >
+                <i class="fas fa-plus mr-2"></i> Add Venue
+              </button>
+            </div>
+          </div>
+
+          <!-- Venues Table -->
+          <div class="overflow-x-auto">
+            <table class="min-w-full bg-white">
+              <thead class="bg-gray-100 text-gray-600 text-sm">
+                <tr>
+                  <th class="py-3 px-4 text-left">Name</th>
+                  <th class="py-3 px-4 text-left">Address</th>
+                  <th class="py-3 px-4 text-left">City</th>
+                  <th class="py-3 px-4 text-left">Status</th>
+                  <th class="py-3 px-4 text-left">Future Booking</th>
+                  <th class="py-3 px-4 text-left">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="venues-table-body" class="text-gray-700">
+                <!-- Venues will be loaded here -->
+                <tr>
+                  <td colspan="6" class="py-4 px-4 text-center">
+                    <p class="text-sm text-gray-500">
+                      Select a city to view venues
+                    </p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Add City Modal -->
+    <div
+      id="add-city-modal"
+      class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold">Add New City</h3>
+          <button class="close-modal text-gray-500 hover:text-gray-700">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <form id="add-city-form">
+          <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-medium mb-2"
+              >City Name</label
+            >
+            <input
+              type="text"
+              name="city_name"
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md"
+            />
+          </div>
+          <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-medium mb-2"
+              >Region Currency</label
+            >
+            <select
+              name="region_currency"
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="">Select Currency</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+              <option value="INR">INR</option>
+              <option value="JPY">JPY</option>
+              <option value="CAD">CAD</option>
+              <option value="AUD">AUD</option>
+            </select>
+          </div>
+          <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-medium mb-2"
+              >Amount</label
+            >
+            <input
+              type="number"
+              name="amount"
+              min="0"
+              step="0.01"
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md"
+            />
+          </div>
+          <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-medium mb-2"
+              >Timezone</label
+            >
+            <select
+              name="timezone"
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="">Select Timezone</option>
+              <option value="America/New_York">America/New_York (UTC-5)</option>
+              <option value="America/Los_Angeles">
+                America/Los_Angeles (UTC-8)
+              </option>
+              <option value="Europe/London">Europe/London (UTC+0)</option>
+              <option value="Europe/Paris">Europe/Paris (UTC+1)</option>
+              <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
+              <option value="Asia/Dubai">Asia/Dubai (UTC+4)</option>
+              <option value="Australia/Sydney">
+                Australia/Sydney (UTC+11)
+              </option>
+            </select>
+          </div>
+          <div class="flex justify-end space-x-2">
+            <button
+              type="button"
+              class="close-modal px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-aws-orange text-white rounded-md hover:bg-yellow-600"
+            >
+              Add City
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Edit City Modal -->
+    <div
+      id="edit-city-modal"
+      class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold">Edit City</h3>
+          <button class="close-modal text-gray-500 hover:text-gray-700">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <form id="edit-city-form">
+          <input type="hidden" name="cityId" />
+          <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-medium mb-2"
+              >City Name</label
+            >
+            <input
+              type="text"
+              name="city_name"
+              disabled
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+            />
+          </div>
+          <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-medium mb-2"
+              >Amount</label
+            >
+            <input
+              type="number"
+              name="amount"
+              min="0"
+              step="0.01"
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md"
+            />
+          </div>
+          <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-medium mb-2"
+              >Timezone</label
+            >
+            <select
+              name="timezone"
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="">Select Timezone</option>
+              <option value="America/New_York">America/New_York (UTC-5)</option>
+              <option value="America/Los_Angeles">
+                America/Los_Angeles (UTC-8)
+              </option>
+              <option value="Europe/London">Europe/London (UTC+0)</option>
+              <option value="Europe/Paris">Europe/Paris (UTC+1)</option>
+              <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
+              <option value="Asia/Dubai">Asia/Dubai (UTC+4)</option>
+              <option value="Australia/Sydney">
+                Australia/Sydney (UTC+11)
+              </option>
+            </select>
+          </div>
+          <div class="flex justify-end space-x-2">
+            <button
+              type="button"
+              class="close-modal px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-aws-orange text-white rounded-md hover:bg-yellow-600"
+            >
+              Update City
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Add Venue Modal -->
+    <div
+      id="add-venue-modal"
+      class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold">Add New Venue</h3>
+          <button class="close-modal text-gray-500 hover:text-gray-700">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <form id="add-venue-form">
+          <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-medium mb-2"
+              >City</label
+            >
+            <select
+              name="city"
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="">Select City</option>
+              <!-- Cities will be loaded here -->
+            </select>
+          </div>
+          <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-medium mb-2"
+              >Venue Name</label
+            >
+            <input
+              type="text"
+              name="name"
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md"
+            />
+          </div>
+          <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-medium mb-2"
+              >Address</label
+            >
+            <textarea
+              name="address"
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md"
+              rows="3"
+            ></textarea>
+          </div>
+          <div class="flex justify-end space-x-2">
+            <button
+              type="button"
+              class="close-modal px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-aws-orange text-white rounded-md hover:bg-yellow-600"
+            >
+              Add Venue
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div
+      id="delete-modal"
+      class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold">Confirm Delete</h3>
+          <button class="close-modal text-gray-500 hover:text-gray-700">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="mb-6">
+          <p id="delete-message" class="text-gray-700">
+            Are you sure you want to delete this item?
+          </p>
+        </div>
+        <div class="flex justify-end space-x-2">
+          <button
+            class="close-modal px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+          >
+            Cancel
+          </button>
+          <button
+            id="confirm-delete"
+            class="px-4 py-2 bg-aws-danger text-white rounded-md hover:bg-red-700"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Base URL
+      const API_BASE_URL = "https://api.meetandmore.com/api/events/venue";
+
+      // State
+      let cities = [];
+      let venues = [];
+      let selectedCityId = "";
+      let deleteItemId = "";
+      let deleteItemType = "";
+
+      // DOM Elements
+      const tabCities = document.getElementById("tab-cities");
+      const tabVenues = document.getElementById("tab-venues");
+      const citiesContent = document.getElementById("cities-content");
+      const venuesContent = document.getElementById("venues-content");
+      const citiesTableBody = document.getElementById("cities-table-body");
+      const venuesTableBody = document.getElementById("venues-table-body");
+      const cityFilter = document.getElementById("city-filter");
+      const addCityBtn = document.getElementById("add-city-btn");
+      const addVenueBtn = document.getElementById("add-venue-btn");
+      const refreshVenuesBtn = document.getElementById("refresh-venues-btn");
+      const addCityModal = document.getElementById("add-city-modal");
+      const editCityModal = document.getElementById("edit-city-modal");
+      const addVenueModal = document.getElementById("add-venue-modal");
+      const deleteModal = document.getElementById("delete-modal");
+      const deleteMessage = document.getElementById("delete-message");
+      const confirmDeleteBtn = document.getElementById("confirm-delete");
+      const addCityForm = document.getElementById("add-city-form");
+      const editCityForm = document.getElementById("edit-city-form");
+      const addVenueForm = document.getElementById("add-venue-form");
+      const adminCodeInput = document.getElementById("admin-code");
+      const verifyAdminCodeBtn = document.getElementById("verify-admin-code");
+      const alertContainer = document.getElementById("alert-container");
+
+      // Tab Switching
+      tabCities.addEventListener("click", () => {
+        tabCities.classList.add("border-aws-orange", "text-aws-blue");
+        tabCities.classList.remove("text-gray-500");
+        tabVenues.classList.remove("border-aws-orange", "text-aws-blue");
+        tabVenues.classList.add("text-gray-500");
+        citiesContent.classList.remove("hidden");
+        venuesContent.classList.add("hidden");
+      });
+
+      tabVenues.addEventListener("click", () => {
+        tabVenues.classList.add("border-aws-orange", "text-aws-blue");
+        tabVenues.classList.remove("text-gray-500");
+        tabCities.classList.remove("border-aws-orange", "text-aws-blue");
+        tabCities.classList.add("text-gray-500");
+        venuesContent.classList.remove("hidden");
+        citiesContent.classList.add("hidden");
+      });
+
+      // Modal Controls
+      document.querySelectorAll(".close-modal").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          addCityModal.classList.add("hidden");
+          editCityModal.classList.add("hidden");
+          addVenueModal.classList.add("hidden");
+          deleteModal.classList.add("hidden");
+        });
+      });
+
+      addCityBtn.addEventListener("click", () => {
+        addCityModal.classList.remove("hidden");
+      });
+
+      addVenueBtn.addEventListener("click", () => {
+        populateCityDropdown(
+          document.querySelector('#add-venue-form select[name="city"]')
+        );
+        addVenueModal.classList.remove("hidden");
+      });
+
+      // Refresh Venues
+      refreshVenuesBtn.addEventListener("click", () => {
+        fetchVenuesByCity(selectedCityId);
+      });
+
+      // Verify Admin Code
+      verifyAdminCodeBtn.addEventListener("click", async () => {
+        const adminCode = adminCodeInput.value.trim();
+        if (!adminCode) {
+          showAlert("Please enter an admin code", "error");
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/cities`, {
+            method: "GET",
+            headers: {
+              "X-Admin-Code": adminCode,
+            },
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.message || "Invalid admin code");
+          }
+
+          localStorage.setItem("adminCode", adminCode);
+          showAlert("Admin code verified successfully", "success");
+          fetchCities(); // Initialize data fetch after verification
+        } catch (error) {
+          showAlert(`Failed to verify admin code: ${error.message}`, "error");
+        }
+      });
+
+      // API Calls with Admin Code Header
+      async function fetchWithAuth(url, options = {}) {
+        let adminCode = localStorage.getItem("adminCode");
+        if (!adminCode) {
+          adminCode = adminCodeInput.value.trim();
+          if (!adminCode) {
+            showAlert("Please verify an admin code first", "error");
+            throw new Error("Admin code required");
+          }
+        }
+
+        const headers = {
+          "Content-Type": "application/json",
+          "X-Admin-Code": adminCode,
+          ...options.headers,
+        };
+
+        try {
+          const response = await fetch(url, {
+            ...options,
+            headers,
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.message || "API request failed");
+          }
+
+          return data;
+        } catch (error) {
+          throw error;
+        }
+      }
+
+      // Fetch Cities
+      async function fetchCities() {
+        try {
+          citiesTableBody.innerHTML = `
+          <tr>
+            <td colspan="5" class="py-4 px-4 text-center">
+              <div class="aws-loader mx-auto"></div>
+              <p class="mt-2 text-sm text-gray-500">Loading cities...</p>
+            </td>
+          </tr>
+        `;
+
+          const response = await fetchWithAuth(`${API_BASE_URL}/cities`);
+          cities = response.data;
+
+          renderCities();
+          populateCityDropdowns();
+        } catch (error) {
+          citiesTableBody.innerHTML = `
+          <tr>
+            <td colspan="5" class="py-4 px-4 text-center text-aws-danger">
+              <i class="fas fa-exclamation-circle mr-2"></i>
+              Failed to load cities: ${error.message}
+            </td>
+          </tr>
+        `;
+        }
+      }
+
+      // Render Cities Table
+      function renderCities() {
+        if (cities.length === 0) {
+          citiesTableBody.innerHTML = `
+          <tr>
+            <td colspan="5" class="py-4 px-4 text-center text-gray-500">
+              No cities found. Add a city to get started.
+            </td>
+          </tr>
+        `;
+          return;
+        }
+
+        citiesTableBody.innerHTML = cities
+          .map(
+            (city) => `
+        <tr class="border-t border-gray-200">
+          <td class="py-3 px-4">${city.city_name}</td>
+          <td class="py-3 px-4">${city.region_currency}</td>
+          <td class="py-3 px-4">${city.amount}</td>
+          <td class="py-3 px-4">${city.timezone || "Not set"}</td>
+          <td class="py-3 px-4">
+            <div class="flex space-x-2">
+              <button class="text-blue-600 hover:text-blue-800" onclick="editCity('${
+                city._id
+              }')">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="text-aws-danger hover:text-red-700" onclick="deleteCity('${
+                city._id
+              }', '${city.city_name}')">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `
+          )
+          .join("");
+      }
+
+      // Populate City Dropdowns
+      function populateCityDropdowns() {
+        // Populate city filter dropdown
+        cityFilter.innerHTML = '<option value="">Select City</option>';
+        cities.forEach((city) => {
+          const option = document.createElement("option");
+          option.value = city._id;
+          option.textContent = city.city_name;
+          cityFilter.appendChild(option);
+        });
+      }
+
+      function populateCityDropdown(selectElement) {
+        selectElement.innerHTML = '<option value="">Select City</option>';
+        cities.forEach((city) => {
+          const option = document.createElement("option");
+          option.value = city._id;
+          option.textContent = city.city_name;
+          selectElement.appendChild(option);
+        });
+      }
+
+      // Fetch Venues by City
+      async function fetchVenuesByCity(cityId) {
+        if (!cityId) {
+          venuesTableBody.innerHTML = `
+          <tr>
+            <td colspan="6" class="py-4 px-4 text-center">
+              <p class="text-sm text-gray-500">Select a city to view venues</p>
+            </td>
+          </tr>
+        `;
+          return;
+        }
+
+        try {
+          venuesTableBody.innerHTML = `
+          <tr>
+            <td colspan="6" class="py-4 px-4 text-center">
+              <div class="aws-loader mx-auto"></div>
+              <p class="mt-2 text-sm text-gray-500">Loading venues...</p>
+            </td>
+          </tr>
+        `;
+
+          const response = await fetchWithAuth(
+            `${API_BASE_URL}/city/${cityId}`
+          );
+          venues = response.data;
+
+          renderVenues();
+        } catch (error) {
+          venuesTableBody.innerHTML = `
+          <tr>
+            <td colspan="6" class="py-4 px-4 text-center text-aws-danger">
+              <i class="fas fa-exclamation-circle mr-2"></i>
+              Failed to load venues: ${error.message}
+            </td>
+          </tr>
+        `;
+        }
+      }
+
+      // Render Venues Table
+      function renderVenues() {
+        if (venues.length === 0) {
+          venuesTableBody.innerHTML = `
+          <tr>
+            <td colspan="6" class="py-4 px-4 text-center text-gray-500">
+              No venues found for this city. Add a venue to get started.
+            </td>
+          </tr>
+        `;
+          return;
+        }
+
+        const cityMap = {};
+        cities.forEach((city) => {
+          cityMap[city._id] = city.city_name;
+        });
+
+        venuesTableBody.innerHTML = venues
+          .map(
+            (venue) => `
+        <tr class="border-t border-gray-200">
+          <td class="py-3 px-4">${venue.name}</td>
+          <td class="py-3 px-4">${venue.address}</td>
+          <td class="py-3 px-4">${cityMap[venue.city] || "Unknown"}</td>
+          <td class="py-3 px-4">
+            <label class="aws-toggle">
+              <input type="checkbox" ${
+                venue.active ? "checked" : ""
+              } onchange="toggleVenueStatus('${venue._id}', this.checked)">
+              <span class="aws-slider"></span>
+            </label>
+            <span class="ml-2 text-sm ${
+              venue.active ? "text-aws-success" : "text-gray-500"
+            }">
+              ${venue.active ? "Active" : "Inactive"}
+            </span>
+          </td>
+          <td class="py-3 px-4">
+            <label class="aws-toggle">
+              <input type="checkbox" ${
+                !venue.preventFutureBooking ? "checked" : ""
+              } onchange="toggleFutureBooking('${venue._id}', !this.checked)">
+              <span class="aws-slider"></span>
+            </label>
+            <span class="ml-2 text-sm ${
+              !venue.preventFutureBooking
+                ? "text-aws-success"
+                : "text-aws-danger"
+            }">
+              ${!venue.preventFutureBooking ? "Allowed" : "Prevented"}
+            </span>
+          </td>
+          <td class="py-3 px-4">
+            <button class="text-aws-danger hover:text-red-700" onclick="deleteVenue('${
+              venue._id
+            }', '${venue.name}')">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `
+          )
+          .join("");
+      }
+
+      // Add City
+      addCityForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(addCityForm);
+        const cityData = {
+          city_name: formData.get("city_name"),
+          region_currency: formData.get("region_currency"),
+          amount: parseFloat(formData.get("amount")),
+          timezone: formData.get("timezone"),
+        };
+
+        try {
+          await fetchWithAuth(`${API_BASE_URL}/cities`, {
+            method: "POST",
+            body: JSON.stringify(cityData),
+          });
+
+          addCityModal.classList.add("hidden");
+          addCityForm.reset();
+          showAlert("City added successfully", "success");
+          await fetchCities();
+        } catch (error) {
+          addCityModal.classList.add("hidden");
+          showAlert(`Failed to add city: ${error.message}`, "error");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      });
+
+      // Edit City
+      window.editCity = async function (cityId) {
+        const city = cities.find((c) => c._id === cityId);
+        if (!city) return;
+
+        const form = document.getElementById("edit-city-form");
+        form.elements.cityId.value = city._id;
+        form.elements.city_name.value = city.city_name;
+        form.elements.amount.value = city.amount;
+        form.elements.timezone.value = city.timezone || "";
+
+        editCityModal.classList.remove("hidden");
+      };
+
+      editCityForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(editCityForm);
+        const cityId = formData.get("cityId");
+        const cityData = {
+          amount: parseFloat(formData.get("amount")),
+          timezone: formData.get("timezone"),
+        };
+
+        try {
+          await fetchWithAuth(`${API_BASE_URL}/cities/${cityId}`, {
+            method: "PATCH",
+            body: JSON.stringify(cityData),
+          });
+
+          editCityModal.classList.add("hidden");
+          showAlert("City updated successfully", "success");
+          await fetchCities();
+        } catch (error) {
+          editCityModal.classList.add("hidden");
+          showAlert(`Failed to update city: ${error.message}`, "error");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      });
+
+      // Delete City
+      window.deleteCity = function (cityId, cityName) {
+        deleteItemId = cityId;
+        deleteItemType = "city";
+        deleteMessage.textContent = `Are you sure you want to delete the city "${cityName}"? This action cannot be undone.`;
+        deleteModal.classList.remove("hidden");
+      };
+
+      // Add Venue
+      addVenueForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(addVenueForm);
+        const venueData = {
+          city: formData.get("city"),
+          name: formData.get("name"),
+          address: formData.get("address"),
+        };
+
+        try {
+          await fetchWithAuth(`${API_BASE_URL}/venues`, {
+            method: "POST",
+            body: JSON.stringify(venueData),
+          });
+
+          addVenueModal.classList.add("hidden");
+          addVenueForm.reset();
+          showAlert("Venue added successfully", "success");
+
+          if (selectedCityId === venueData.city) {
+            await fetchVenuesByCity(selectedCityId);
+          }
+        } catch (error) {
+          addVenueModal.classList.add("hidden");
+          showAlert(`Failed to add venue: ${error.message}`, "error");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      });
+
+      // Delete Venue
+      window.deleteVenue = function (venueId, venueName) {
+        deleteItemId = venueId;
+        deleteItemType = "venue";
+        deleteMessage.textContent = `Are you sure you want to delete the venue "${venueName}"? This action cannot be undone.`;
+        deleteModal.classList.remove("hidden");
+      };
+
+      // Toggle Venue Status
+      window.toggleVenueStatus = async function (venueId, isActive) {
+        try {
+          await fetchWithAuth(`${API_BASE_URL}/${venueId}/toggle-status`, {
+            method: "PATCH",
+          });
+
+          showAlert(
+            `Venue ${isActive ? "activated" : "deactivated"} successfully`,
+            "success"
+          );
+          await fetchVenuesByCity(selectedCityId);
+        } catch (error) {
+          showAlert(`Failed to update venue status: ${error.message}`, "error");
+          await fetchVenuesByCity(selectedCityId); // Refresh to revert UI
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      };
+
+      // Toggle Future Booking
+      window.toggleFutureBooking = async function (venueId, preventBooking) {
+        try {
+          await fetchWithAuth(
+            `${API_BASE_URL}/${venueId}/toggle-future-booking`,
+            {
+              method: "PATCH",
+            }
+          );
+
+          showAlert(
+            `Future booking ${
+              preventBooking ? "prevented" : "allowed"
+            } successfully`,
+            "success"
+          );
+          await fetchVenuesByCity(selectedCityId);
+        } catch (error) {
+          showAlert(
+            `Failed to update future booking status: ${error.message}`,
+            "error"
+          );
+          await fetchVenuesByCity(selectedCityId); // Refresh to revert UI
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      };
+
+      // Confirm Delete
+      confirmDeleteBtn.addEventListener("click", async () => {
+        if (!deleteItemId || !deleteItemType) return;
+
+        try {
+          if (deleteItemType === "city") {
+            await fetchWithAuth(`${API_BASE_URL}/cities/${deleteItemId}`, {
+              method: "DELETE",
+            });
+
+            showAlert("City deleted successfully", "success");
+            await fetchCities();
+          } else if (deleteItemType === "venue") {
+            await fetchWithAuth(`${API_BASE_URL}/venues/${deleteItemId}`, {
+              method: "DELETE",
+            });
+
+            showAlert("Venue deleted successfully", "success");
+            await fetchVenuesByCity(selectedCityId);
+          }
+
+          deleteModal.classList.add("hidden");
+        } catch (error) {
+          deleteModal.classList.add("hidden");
+          showAlert(
+            `Failed to delete ${deleteItemType}: ${error.message}`,
+            "error"
+          );
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      });
+
+      // City Filter Change
+      cityFilter.addEventListener("change", () => {
+        selectedCityId = cityFilter.value;
+        fetchVenuesByCity(selectedCityId);
+      });
+
+      // Show Alert
+      function showAlert(message, type) {
+        const alertClass =
+          type === "success" ? "bg-aws-success" : "bg-aws-danger";
+        const icon =
+          type === "success" ? "fa-check-circle" : "fa-exclamation-circle";
+
+        const alert = document.createElement("div");
+        alert.className = `${alertClass} text-white px-4 py-3 rounded relative mb-4 fade-in`;
+        alert.innerHTML = `
+        <div class="flex items-center">
+          <i class="fas ${icon} mr-2"></i>
+          <span>${message}</span>
+        </div>
+        <button class="absolute top-0 right-0 mt-3 mr-4" onclick="this.parentElement.remove()">
+          <i class="fas fa-times"></i>
+        </button>
+      `;
+
+        alertContainer.innerHTML = "";
+        alertContainer.appendChild(alert);
+        alertContainer.classList.remove("hidden");
+
+        setTimeout(() => {
+          alert.remove();
+          if (alertContainer.children.length === 0) {
+            alertContainer.classList.add("hidden");
+          }
+        }, 5000);
+      }
+
+      // Initialize
+      document.addEventListener("DOMContentLoaded", () => {
+        const storedAdminCode = localStorage.getItem("adminCode");
+        if (storedAdminCode) {
+          adminCodeInput.value = storedAdminCode;
+          fetchCities();
+        }
+      });
+    </script>
+  </body>
+</html>
